@@ -1,0 +1,88 @@
+#include <stdio.h>
+
+int findOptimal(int pages[], int frame[], int n, int index, int framesCount) {
+    int farthest = index, pos = -1;
+    for (int i = 0; i < framesCount; i++) {
+        int j;
+        for (j = index; j < n; j++) {
+            if (frame[i] == pages[j]) {
+                if (j > farthest) {
+                    farthest = j;
+                    pos = i;
+                }
+                break;
+            }
+        }
+        // If page not found in future, replace it immediately
+        if (j == n)
+            return i;
+    }
+    // If all pages are found in future, return the farthest one
+    return (pos == -1) ? 0 : pos;
+}
+
+int main() {
+    int n, framesCount, pages[30], frame[10];
+    int faults = 0, hits = 0;
+
+    printf("Enter number of frames: ");
+    scanf("%d", &framesCount);
+
+    printf("Enter number of pages: ");
+    scanf("%d", &n);
+
+    printf("Enter the page reference string: ");
+    for (int i = 0; i < n; i++)
+        scanf("%d", &pages[i]);
+
+    for (int i = 0; i < framesCount; i++)
+        frame[i] = -1;
+
+    printf("\nPage Replacement Process:\n");
+
+    for (int i = 0; i < n; i++) {
+        int flag = 0;
+
+        // Check if page is already in frame
+        for (int j = 0; j < framesCount; j++) {
+            if (frame[j] == pages[i]) {
+                hits++;
+                flag = 1;
+                printf("Page %d -> No Replacement (Page Hit)\n", pages[i]);
+                break;
+            }
+        }
+
+        // If page not found, replace it
+        if (flag == 0) {
+            int empty = -1;
+            for (int j = 0; j < framesCount; j++) {
+                if (frame[j] == -1) {
+                    empty = j;
+                    break;
+                }
+            }
+
+            if (empty != -1)
+                frame[empty] = pages[i];
+            else {
+                int pos = findOptimal(pages, frame, n, i + 1, framesCount);
+                frame[pos] = pages[i];
+            }
+
+            faults++;
+            printf("Page %d -> ", pages[i]);
+            for (int k = 0; k < framesCount; k++) {
+                if (frame[k] != -1)
+                    printf("%d ", frame[k]);
+                else
+                    printf("- ");
+            }
+            printf("(Page Fault)\n");
+        }
+    }
+
+    printf("\nTotal Page Faults = %d\n", faults);
+    printf("Total Page Hits = %d\n", hits);
+    return 0;
+}
