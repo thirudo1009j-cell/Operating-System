@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+#define BUFFER_SIZE 5  // Maximum buffer size
+
+int buffer[BUFFER_SIZE];
+int in = 0, out = 0;
+
+sem_t empty;  // Counts empty slots
+sem_t full;   // Counts filled slots
+pthread_mutex_t mutex; // For mutual exclusion
+
+void* producer(void* pno) {
+    int item;
+    for (int i = 0; i < 5; i++) {
+        item = rand() % 100; // Produce an item
+
+        sem_wait(&empty); // Decrease empty count
+        pthread_mutex_lock(&mutex); // Lock buffer
+
+        buffer[in] = item;
+        printf("Producer %d: Inserted item %d at position %d\n", *((int*)pno), item, in);
+        in = (in + 1) % BUFFER_SIZE;
+
+        pthread_mutex_unlock(&mutex); // Unlock buffer
+        sem_post(&full); // Increase full count
+        sleep(1);
+    }
+    return NULL;
+}
+
+void* consumer(void* cno) {
+    for (int i = 0; i < 5; i++) {
+        sem_wait(&full); // Wait for filled slot
+        pthread_mutex_lock(&mutex); // Lock buffer
+
+        int item = buffer[out];
+        printf("Consumer %d: Removed item %d from position %d\n", *((int*)cno), item, out);
+        out = (out + 1) % BUFFER_SIZE;
+
+        pthread_mutex_unlock(&mutex); // Unlock buffer
+        sem_post(&empty); // Increase empty count
+        sleep(1);
+    }
+    return NULL;
+}
+
+int main() {
+    pthread_t prod[2], cons[2];
+    int a[2] = {1, 2}; // IDs for producer/consumer threads
+
+    // Initialize semaphores and mutex
+    sem_init(&empty, 0, BUFFER_SIZE);
+    sem_init(&full, 0, 0);
+    pthread_mutex_init(&mutex, NULL);
+
+    // Create threads
+    pthread_create(&prod[0], NULL, producer, &a[0]);
+    pthread_create(&prod[1], NULL, producer, &a[1]);
+    pthread_create(&cons[0], NULL, consumer, &a[0]);
+    pthread_create(&cons[1], NULL, consumer, &a[1]);
+
+    // Wait for threads to finish
+    for (int i = 0; i < 2; i++) {
+        pthread_join(prod[i], NULL);
+        pthread_join(cons[i], NULL);
+    }
+
+    // Destroy semaphores and mutex
+    sem_destroy(&empty);
+    sem_destroy(&full);
+    pthread_mutex_destroy(&mutex);
+
+    return 0;
+}
